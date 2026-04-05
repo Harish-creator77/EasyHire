@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Evaluator</title>
+    <!-- Tailwind for rapid hackathon styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .editor-container {
+            height: calc(100vh - 120px);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+        }
+
+        .test-case {
+            border-left: 4px solid #3b82f6;
+            padding-left: 12px;
+            margin-bottom: 12px;
+        }
+
+        .passed {
+            border-color: #22c55e !important;
+            color: #22c55e;
+        }
+
+        .failed {
+            border-color: #ef4444 !important;
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body class="p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 glass p-4 rounded-xl">
+            <div>
+                <h1
+                    class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                    🚀 Ed Tech
+                </h1>
+                <p class="text-sm text-slate-400">Run test cases securely across 40+ languages.</p>
+            </div>
+
+            <div class="flex gap-4">
+                <select id="problemSelect"
+                    class="bg-slate-800 border border-slate-600 rounded px-4 py-2 text-white outline-none focus:border-blue-500">
+                    <option value="twoSum">Two Sum</option>
+                    <option value="palindrome">Palindrome Checker</option>
+                    <option value="evenOdd">Even or Odd</option>
+                </select>
+                <select id="languageSelect"
+                    class="bg-slate-800 border border-slate-600 rounded px-4 py-2 text-white outline-none focus:border-blue-500">
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript (Node)</option>
+                    <option value="cpp">C++ (GCC)</option>
+                    <option value="java">Java</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                </select>
+
+                <button id="runBtn"
+                    class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded font-semibold transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Run Code
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left: Editor -->
+            <div class="editor-container shadow-2xl relative" id="editorContainer"></div>
+
+            <!-- Right: Problem & Execution Results -->
+            <div class="flex flex-col gap-6">
+                <!-- Problem Description -->
+                <div class="glass p-6 rounded-xl">
+                    <h2 class="text-xl font-semibold mb-2" id="problemTitle">Problem: Two Sum</h2>
+                    <p class="text-slate-300 mb-4 whitespace-pre-wrap" id="problemDescText"></p>
+                    <div class="bg-slate-800 p-3 rounded text-sm text-slate-400" id="problemTestsBox">
+                    </div>
+                </div>
+
+                <!-- Execution Results -->
+                <div class="glass p-6 rounded-xl flex-grow overflow-auto" id="resultsBox">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-200 border-b border-slate-700 pb-2">Execution
+                        Results</h3>
+
+                    <div id="loader" class="hidden text-center py-8">
+                        <div
+                            class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent">
+                        </div>
+                        <p class="mt-2 text-slate-400">Evaluating against test cases...</p>
+                    </div>
+
+                    <div id="resultsContent" class="text-slate-400 text-center py-8">
+                        Click "Run Code" to evaluate your solution.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/loader.min.js"></script>
+    <script>
+        let currentProblem = "twoSum";
+
+        const problems = {
+            twoSum: {
+                title: "Problem: Two Sum",
+                description: "Given numbers separated by space, read them and return their sum.\n\nFormat:\nInput: a space b\nOutput: (a + b)\n\nNote: Your code must read from Standard Input (stdin) and print to Standard Output (stdout).",
+                testCases: [
+                    { input: "2 3", expected: "5" },
+                    { input: "10 -5", expected: "5" },
+                    { input: "4 4", expected: "8" },
+                    { input: "0 0", expected: "0" },
+                    { input: "-10 -20", expected: "-30" }
+                ]
+            },
+            palindrome: {
+                title: "Problem: Palindrome Checker",
+                description: "Given a single string, check if it reads the same forwards and backwards. Return 'True' if it is a palindrome, 'False' otherwise. (Case sensitive)\n\nNote: Your code must read from Standard Input and print to Standard Output.",
+                testCases: [
+                    { input: "racecar", expected: "True" },
+                    { input: "hello", expected: "False" },
+                    { input: "level", expected: "True" },
+                    { input: "Aman", expected: "False" },
+                    { input: "a", expected: "True" }
+                ]
+            },
+            evenOdd: {
+                title: "Problem: Even or Odd",
+                description: "Given a single integer, return 'Even' if it is even, and 'Odd' if it is odd.\n\nNote: Your code must read from Standard Input and print to Standard Output.",
+                testCases: [
+                    { input: "4", expected: "Even" },
+                    { input: "7", expected: "Odd" },
+                    { input: "0", expected: "Even" },
+                    { input: "-3", expected: "Odd" },
+                    { input: "100", expected: "Even" }
+                ]
+            }
+        };
+
+        function renderProblem() {
+            const prob = problems[currentProblem];
+            document.getElementById("problemTitle").innerText = prob.title;
+            document.getElementById("problemDescText").innerText = prob.description;
+
+            let testsHtml = "";
+            prob.testCases.forEach((t, i) => {
+                testsHtml += `<span class="block"><strong>Test ${i + 1}:</strong> Input: <span class="text-blue-300">"${escapeHtml(t.input)}"</span> &rarr; Expected: <span class="text-emerald-300">"${escapeHtml(t.expected)}"</span></span>`;
+            });
+            document.getElementById("problemTestsBox").innerHTML = testsHtml;
+        }
+
+        document.getElementById("problemSelect").addEventListener("change", (e) => {
+            currentProblem = e.target.value;
+            renderProblem();
+            document.getElementById('resultsContent').innerHTML = 'Click "Run Code" to evaluate your solution.';
+        });
+
+        // Initialize problem
+        renderProblem();
+
+        // Default Code Snippets
+        const snippets = {
+            python: "# Write your Python solution here\n# Input is read from stdin and output to stdout\nimport sys\n\ndef main():\n    pass\n\nif __name__ == '__main__':\n    main()",
+            javascript: "// Write your JavaScript solution here\n// Input is read from stdin and output to stdout\nconst fs = require('fs');\nconst input = fs.readFileSync('/dev/stdin').toString().trim().split(' ');\n",
+            cpp: "// Write your C++ solution here\n// Input is read from stdin and output to stdout\n#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}",
+            java: "// Write your Java solution here\n// Input is read from stdin and output to stdout\nimport java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        \n    }\n}",
+            go: "// Write your Go solution here\n// Input is read from stdin and output to stdout\npackage main\n\nimport (\n\t\"fmt\"\n)\n\nfunc main() {\n\t\n}",
+            rust: "// Write your Rust solution here\n// Input is read from stdin and output to stdout\nuse std::io::{self, Read};\n\nfn main() {\n    \n}"
+        };
+
+        // Initialize Monaco
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' } });
+        let editor;
+
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editorContainer'), {
+                value: snippets['python'],
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 16,
+                fontFamily: "'Fira Code', 'Courier New', monospace",
+                lineHeight: 24,
+                padding: { top: 16 }
+            });
+
+            // Handle Language Change
+            document.getElementById('languageSelect').addEventListener('change', (e) => {
+                const lang = e.target.value;
+                monaco.editor.setModelLanguage(editor.getModel(), lang);
+                editor.setValue(snippets[lang] || "// Start coding here...");
+            });
+        });
+
+        // Run Code Execution
+        document.getElementById('runBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('runBtn');
+            const loader = document.getElementById('loader');
+            const resultsContent = document.getElementById('resultsContent');
+            const code = editor.getValue();
+            const language = document.getElementById('languageSelect').value;
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            loader.classList.remove('hidden');
+            resultsContent.innerHTML = ''; // clear
+
+            try {
+                const response = await fetch('/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language, code, tests: problems[currentProblem].testCases })
+                });
+
+                if (!response.ok) throw new Error("Server communication failed.");
+
+                const data = await response.json();
+                renderResults(data);
+
+            } catch (err) {
+                resultsContent.innerHTML = `<div class="p-4 bg-red-900/30 text-red-400 rounded border border-red-800">❌ Evaluation Error: ${err.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                loader.classList.add('hidden');
+            }
+        });
+
+        function renderResults(data) {
+            const resultsContent = document.getElementById('resultsContent');
+
+            const isSuccess = data.status === "Success";
+            let html = `
+                <div class="mb-6 p-4 rounded-xl flex justify-between items-center border ${isSuccess ? 'bg-emerald-900/20 border-emerald-800' : 'bg-red-900/20 border-red-800'}">
+                    <div>
+                        <span class="text-2xl font-bold ${isSuccess ? 'text-emerald-400' : 'text-red-400'}">
+                            ${isSuccess ? '✅ All Tests Passed!' : '❌ Tests Failed'}
+                        </span>
+                    </div>
+                    <div class="text-xl font-mono ${isSuccess ? 'text-emerald-300' : 'text-red-300'}">
+                        Score: ${data.score}
+                    </div>
+                </div>
+                <div class="space-y-4 text-left">
+            `;
+
+            data.details.forEach(test => {
+                const passed = test.passed;
+                const borderClass = passed ? 'border-emerald-700' : 'border-red-700';
+                const statusIcon = passed ? '✅' : '❌';
+                const textColor = passed ? 'text-emerald-400' : 'text-red-400';
+
+                html += `
+                    <div class="bg-slate-900 rounded border-l-4 ${borderClass} p-4 text-sm relative">
+                        <div class="absolute top-4 right-4 ${textColor} font-bold">${statusIcon}</div>
+                        <div class="mb-2"><strong class="text-slate-300">Test Case ${test.test_case}</strong></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-xs text-slate-500 uppercase font-bold mb-1">Input</div>
+                                <div class="bg-black/50 p-2 rounded font-mono text-blue-300">${escapeHtml(test.input)}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-500 uppercase font-bold mb-1">Expected Output</div>
+                                <div class="bg-black/50 p-2 rounded font-mono text-emerald-300">${escapeHtml(test.expected)}</div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-xs text-slate-500 uppercase font-bold mb-1">Actual Output</div>
+                            <div class="bg-black/50 p-2 rounded font-mono ${passed ? 'text-slate-300' : 'text-red-400 bg-red-900/10'} whitespace-pre-wrap">${escapeHtml(test.actual) || '<i>(No Output)</i>'}</div>
+                        </div>
+                        ${test.error ? `
+                        <div class="mt-3">
+                            <div class="text-xs text-red-500 uppercase font-bold mb-1">Error Stream (stderr)</div>
+                            <div class="bg-red-900/30 text-red-400 p-2 rounded font-mono whitespace-pre-wrap text-xs">${escapeHtml(test.error)}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            resultsContent.innerHTML = html;
+        }
+
+        // Quick HTML string escaper helper
+        function escapeHtml(unsafe) {
+            if (!unsafe) return "";
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+
+</html>
